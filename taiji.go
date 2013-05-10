@@ -7,6 +7,7 @@ import (
     "net"
     "strconv"
     "strings"
+    "syscall"
     "text/scanner"
 )
 
@@ -41,6 +42,12 @@ type Server struct {
     controlPort int
     clients map[string] chan *Event
     masterChan chan *Event
+    clientListener net.Listener
+    controlListener net.Listener
+}
+
+func NewServer(clientPort, controlPort int) (*Server) {
+   return &Server{ clientPort, controlPort, make(map[string] chan *Event), make(chan *Event, 32), nil, nil }
 }
 
 func (m *Server) handleConnection(conn net.Conn) {
@@ -237,19 +244,25 @@ func (m *Server) ListenAndServe() {
 }
 
 func (m *Server) close() {
-
+    m.clientListener.Close()
+    m.controlListener.Close()
 }
 
 func (m *Server) startClientListener() {
-    server, err := net.Listen("tcp", ":" + strconv.Itoa((m.clientPort)))
+    var err error
+    m.clientListener, err = net.Listen("tcp", ":" + strconv.Itoa((m.clientPort)))
     if err != nil {
         log.Printf("Error binding to client listening port: %s", err.Error())
     } else {
         for {
-            conn, err := server.Accept()
+            conn, err := m.clientListener.Accept()
             if err != nil {
                 log.Printf("Error accepting: %s", err.Error())
-                continue
+                if err == syscall.EINTR {
+                    continue
+                } else {
+                    break
+                }
             }
             go m.handleConnection(conn)
         }
@@ -257,15 +270,20 @@ func (m *Server) startClientListener() {
 }
 
 func (m *Server) startControlListener() {
-    server, err := net.Listen("tcp", ":" + strconv.Itoa(m.controlPort))
+    var err error
+    m.controlListener, err = net.Listen("tcp", ":" + strconv.Itoa(m.controlPort))
     if err != nil {
         log.Printf("Error binding to control port: %s", err.Error())
     } else {
         for {
-            conn, err := server.Accept()
+            conn, err := m.controlListener.Accept()
             if err != nil {
                 log.Printf("Error accepting: %s", err.Error())
-                continue
+                if err == syscall.EINTR {
+                    continue
+                } else {
+                    break
+                }
             }
             go m.handleControlConnection(conn)
         }
