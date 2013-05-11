@@ -69,6 +69,7 @@ func TestBroadcast(t *testing.T) {
     controlConn, _ := net.Dial("tcp", ":6666")
     defer controlConn.Close()
 
+    time.Sleep(500 * time.Millisecond)
     controlWriter := bufio.NewWriter(controlConn)
     controlWriter.WriteString("b \"Hello\"\n")
     controlWriter.Flush()
@@ -117,6 +118,7 @@ func TestSendTo(t *testing.T) {
     controlConn, _ := net.Dial("tcp", ":6666")
     defer controlConn.Close()
 
+    time.Sleep(500 * time.Millisecond)
     controlWriter := bufio.NewWriter(controlConn)
     controlWriter.WriteString("s abc \"Hello\"\n")
     controlWriter.Flush()
